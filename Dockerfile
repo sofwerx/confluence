@@ -1,7 +1,35 @@
-FROM blacklabelops/java:server-jre.8
-MAINTAINER Steffen Bleul <sbl@blacklabelops.com>
+FROM alpine:3.7
 
-ARG CONFLUENCE_VERSION=6.10.1
+ARG JAVA_DISTRIBUTION=jre
+ARG JAVA_MAJOR_VERSION=8
+ARG JAVA_UPDATE_VERSION=latest
+ARG JAVA_BUILD_NUMBER=
+ARG JAVA_HASH=
+ARG BUILD_DATE=undefined
+
+RUN if  [ "${JAVA_DISTRIBUTION}" = "jre" ]; \
+      then export JAVA_PACKAGE_POSTFIX_VERSION=-jre ; \
+      else export JAVA_PACKAGE_POSTFIX_VERSION= ; \
+    fi && \
+    export JAVA_VERSION=${JAVA_MAJOR_VERSION}.${JAVA_UPDATE_VERSION}.${JAVA_BUILD_NUMBER} && \
+    if  [ "${JAVA_UPDATE_VERSION}" = "latest" ]; \
+      then apk add --update openjdk${JAVA_MAJOR_VERSION}${JAVA_PACKAGE_POSTFIX_VERSION} ; \
+      else apk add --update "openjdk${JAVA_MAJOR_VERSION}${JAVA_PACKAGE_POSTFIX_VERSION}=${JAVA_VERSION}" ; \
+    fi && \
+    # Clean caches and tmps
+    rm -rf /var/cache/apk/* && \
+    rm -rf /tmp/* && \
+    rm -rf /var/log/*
+
+ENV JAVA_HOME=/usr/lib/jvm/default-jvm
+ENV PATH=$JAVA_HOME/bin:$PATH
+
+LABEL com.blacklabelops.image.name.java="java-"${JAVA_DISTRIBUTION}"-base-image" \
+      com.blacklabelops.application.name.java="java" \
+      com.blacklabelops.application.version.java=${JAVA_DISTRIBUTION}${JAVA_MAJOR_VERSION}"-"${JAVA_UPDATE_VERSION}"-b"${JAVA_BUILD_NUMBER} \
+      com.blacklabelops.image.builddate.java=${BUILD_DATE}
+
+ARG CONFLUENCE_VERSION=${CONFLUENCE_VERSION}
 # permissions
 ARG CONTAINER_UID=1000
 ARG CONTAINER_GID=1000
@@ -27,9 +55,12 @@ RUN export CONTAINER_USER=confluence                &&  \
             -S $CONTAINER_USER                      &&  \
 
     apk add --update                                    \
+      bash                                              \
       ca-certificates                                   \
       gzip                                              \
       curl                                              \
+      tini                                              \
+      glib                                              \
       tar                                               \
       xmlstarlet                                        \
       msttcorefonts-installer                           \
@@ -43,7 +74,7 @@ RUN export CONTAINER_USER=confluence                &&  \
     update-ms-fonts                                 && \
     fc-cache -f                                     && \
     # Setting Locale
-    /usr/glibc-compat/bin/localedef -i ${LANG_LANGUAGE}_${LANG_COUNTRY} -f UTF-8 ${LANG_LANGUAGE}_${LANG_COUNTRY}.UTF-8 && \
+    #/usr/glibc-compat/bin/localedef -i ${LANG_LANGUAGE}_${LANG_COUNTRY} -f UTF-8 ${LANG_LANGUAGE}_${LANG_COUNTRY}.UTF-8 && \
     # Installing Confluence
     mkdir -p ${CONF_HOME} \
     && chown -R confluence:confluence ${CONF_HOME} \
@@ -69,12 +100,12 @@ RUN export CONTAINER_USER=confluence                &&  \
     wget -P /tmp/ https://letsencrypt.org/certs/lets-encrypt-x2-cross-signed.der && \
     wget -P /tmp/ https://letsencrypt.org/certs/lets-encrypt-x3-cross-signed.der && \
     wget -P /tmp/ https://letsencrypt.org/certs/lets-encrypt-x4-cross-signed.der && \
-    keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias isrgrootx1 -file /tmp/letsencryptauthorityx1.der && \
-    keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias isrgrootx2 -file /tmp/letsencryptauthorityx2.der && \
-    keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias letsencryptauthorityx1 -file /tmp/lets-encrypt-x1-cross-signed.der && \
-    keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias letsencryptauthorityx2 -file /tmp/lets-encrypt-x2-cross-signed.der && \
-    keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias letsencryptauthorityx3 -file /tmp/lets-encrypt-x3-cross-signed.der && \
-    keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias letsencryptauthorityx4 -file /tmp/lets-encrypt-x4-cross-signed.der && \
+    #keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias isrgrootx1 -file /tmp/letsencryptauthorityx1.der && \
+    #keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias isrgrootx2 -file /tmp/letsencryptauthorityx2.der && \
+    #keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias letsencryptauthorityx1 -file /tmp/lets-encrypt-x1-cross-signed.der && \
+    #keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias letsencryptauthorityx2 -file /tmp/lets-encrypt-x2-cross-signed.der && \
+    #keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias letsencryptauthorityx3 -file /tmp/lets-encrypt-x3-cross-signed.der && \
+    #keytool -trustcacerts -keystore $KEYSTORE -storepass changeit -noprompt -importcert -alias letsencryptauthorityx4 -file /tmp/lets-encrypt-x4-cross-signed.der && \
     # Install atlassian ssl tool
     wget -O /home/${CONTAINER_USER}/SSLPoke.class https://confluence.atlassian.com/kb/files/779355358/779355357/1/1441897666313/SSLPoke.class && \
     chown -R confluence:confluence /home/${CONTAINER_USER} && \

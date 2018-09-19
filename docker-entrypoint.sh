@@ -258,7 +258,6 @@ if [ -n "${CONFLUENCE_CROWD_SSO}" ]; then
 fi
 
 if [ "$1" = 'confluence' ]; then
-  source /usr/bin/dockerwait
   exec ${CONF_INSTALL}/bin/start-confluence.sh -fg
 else
   exec "$@"

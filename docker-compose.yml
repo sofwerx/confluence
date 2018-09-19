@@ -18,6 +18,7 @@ services:
       - 'CONFLUENCE_PROXY_PORT='
       - 'CONFLUENCE_PROXY_SCHEME='
       - 'CONFLUENCE_DELAYED_START='
+      - "CONFLUENCE_VERSION=${CONFLUENCE_VERSION}"
     labels:
       com.blacklabelops.description: "Atlassian Confluence"
       com.blacklabelops.service: "confluence"
